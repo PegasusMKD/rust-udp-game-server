@@ -15,13 +15,7 @@ async fn main() -> io::Result<()> {
     
     println!("Started UDP server on port 8080.");
     
-    let mut message_counter = 0;
     loop {
-        message_counter += 1;
         server.process().await?;
-
-        if message_counter % 500 == 0 {
-            println!("Processed {message_counter} messages...");
-        }
     }
 }

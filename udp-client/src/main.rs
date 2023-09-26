@@ -46,10 +46,15 @@ impl GameClient {
         print!("\n");
     }
 
+    pub fn configure_programmatically(&mut self, rate_limit: i16, username: String) {
+        self.username = username;
+        self.rate_limit = rate_limit;
+    }
+
     pub async fn join_lobby(&mut self) -> io::Result<()> {
         println!("Enter anything to join the lobby");
         let mut input = String::new();
-        io::stdin().read_line(&mut input).expect("Lobby failed");
+        // io::stdin().read_line(&mut input).expect("Lobby failed");
         let payload = input_messages::PlayerJoined { id: self.id.clone(), username: self.username.clone() }; 
         let body = input_messages::GameEvent { event: Some(Event::Joined(payload)) };
         self.write_buf.reserve(body.encoded_len());
@@ -64,17 +69,46 @@ impl GameClient {
     pub async fn simulate(&mut self) -> io::Result<()> {
         let start = Instant::now();
         let mut sent_messages = 0;
-        // loop {
+        let mut allow_print = true;
+        let mut batch_messages = 0;
+        let mut last_sec = 0;
+        let mut second_messages = 0;
+        let mut send_messages = true;
+        loop {
             let elapsed = start.elapsed();
-            
-            self.send_movement().await?;
-            sent_messages += 1;
-            if elapsed.as_secs() > 0 && elapsed.as_secs() % 30 == 0 {
-                println!("Current message/second: {}", sent_messages / elapsed.as_secs());
+            if last_sec != elapsed.as_secs() {
+                send_messages = true;
+                second_messages = 0;
             }
-        println!("Uuuuhhhh");
-        // }
-        Ok(())
+
+            if send_messages {
+                self.send_movement().await?;
+                sent_messages += 1;
+                batch_messages += 1;
+                second_messages += 1;
+            }
+            
+            if second_messages > self.rate_limit { 
+                send_messages = false;
+            }
+
+            last_sec = elapsed.as_secs();
+
+            if elapsed.as_secs() > 0 && elapsed.as_secs() % 6 != 0 {
+                allow_print = true;
+            }
+
+            if elapsed.as_secs() > 0 && elapsed.as_secs() % 6 == 0 && allow_print {
+                println!("Next log:");
+                let time = chrono::Utc::now();
+                println!("\t[{}] Current message/second: {}", time, sent_messages / elapsed.as_secs());
+                println!("\t[{}] Total messages: {}", time, sent_messages);
+                println!("\t[{}] Messages in this batch: {}", time, batch_messages);
+                println!("\t[{}] Elapsed seconds: {}", time, elapsed.as_secs());
+                allow_print = false;
+                batch_messages = 0;
+            }
+        }
         
     }
 
@@ -93,16 +127,22 @@ impl GameClient {
 #[tokio::main]
 async fn main() -> io::Result<()> {
     let server_addr = "127.0.0.1:8080";
+    let mut set = tokio::task::JoinSet::new();
+    for idx in 0..5 {
+        set.spawn(async move {
+            let socket = UdpSocket::bind("0.0.0.0:0").await.unwrap();
+            println!("Created socket...");
+            socket.connect(server_addr).await.unwrap();
+            println!("Connected to server");
+            
+            let mut client = GameClient::new(socket);
+            client.configure_programmatically(200, format!("test{}", idx.to_string()));
+            client.join_lobby().await.unwrap();
+            client.simulate().await.unwrap();
+        });
+        
+    }
 
-    let socket = UdpSocket::bind("0.0.0.0:0").await?;
-    println!("Created socket...");
-    socket.connect(server_addr).await?;
-    println!("Connected to server");
-
-    let mut client = GameClient::new(socket);
-    // client.configure();
-    client.join_lobby().await?;
-    client.simulate().await?;
-
+    set.join_next().await;
     Ok(())
 }

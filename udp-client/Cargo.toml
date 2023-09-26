@@ -9,6 +9,7 @@ edition = "2021"
 prost = "0.12.1"
 prost-types = "0.12.1"
 bytes = "1"
+chrono = "0.4.31"
 
 [dependencies.tokio]
 version = "1.32.0"

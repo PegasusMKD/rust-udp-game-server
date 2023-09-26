@@ -1,11 +1,12 @@
-use std::io;
+use std::io::{self, ErrorKind};
 use std::net::SocketAddr;
 
 use prost::Message;
 use tokio::net::UdpSocket;
 
-use bytes;
-use crate::game_info::*;
+use crate::{game_info::*, input_messages};
+
+use bytes::{BytesMut, BufMut, Buf};
 
 use crate::input_messages::game_event::*;
 use crate::input_messages::*;
@@ -16,28 +17,38 @@ pub struct GameServer {
     pub socket: UdpSocket,
     pub game: GameInfo,
     
-    read_buf: bytes::BytesMut,
-    write_buf: bytes::BytesMut
+    write_buf: bytes::BytesMut,
+
+    message_counter: i32
 }
 
 impl GameServer {
 
     pub fn new(socket: UdpSocket) -> Self {
-        GameServer { socket, game: GameInfo::default(), read_buf: bytes::BytesMut::new(), write_buf: bytes::BytesMut::new() }
+        GameServer { socket, game: GameInfo::default(), write_buf: BytesMut::new(), message_counter: 0 }
     }
 
     pub async fn process(&mut self) -> io::Result<()> {
-        self.read_buf.reserve(128);
-        println!("Capacity: {}", self.read_buf.capacity());
-        let (_size, addr) = self.socket.recv_from(&mut self.read_buf).await?;
-        println!("VEctor passed...");
-        let event = GameEvent::decode(&mut self.read_buf)?;
-        self.read_buf.clear();
-        println!("Decoded one...");
+        let mut buf = Vec::from([0x0; 128]);
+        let result = self.socket.try_recv_from(&mut buf);
+        
+        match result {
+            Err(ref e) => if e.raw_os_error().is_some_and(|err| err == 10054) || e.kind() == ErrorKind::WouldBlock { return Ok(()); },
+            _ => ()
+        }
+
+        let (_size, addr) = result.unwrap();
+        let clean_buf: Vec<u8> = buf.into_iter().filter(|b| *b != 0x0).collect();
+        let event = GameEvent::decode(&mut clean_buf.as_slice())?;
         // TODO: check if we should do this in a separate thread, as well as the update itself
         let update = self.process_event(event, addr);
         self.process_update(update).await?;
         self.write_buf.clear();
+        self.message_counter += 1;
+
+        if self.message_counter % 500 == 0 {
+            println!("Processed {} messages...", self.message_counter);
+        }
         Ok(())
     }
 
@@ -64,7 +75,10 @@ impl GameServer {
         
         // TODO: Check if we should spawn this in a separate thread and put into an Arc mutex
         for addr in addrs {
-           self.socket.send_to(&self.write_buf, addr).await?;
+            let result = self.socket.try_send_to(&self.write_buf, addr);
+            if result.is_err() {
+                self.game.remove_player(input_messages::PlayerLeft { id: String::new() }, addr);
+            }
         }
 
         Ok(())
