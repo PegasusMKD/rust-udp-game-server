@@ -4,6 +4,7 @@ use std::net::SocketAddr;
 use prost::Message;
 use tokio::net::UdpSocket;
 
+use bytes;
 use crate::game_info::*;
 
 use crate::input_messages::game_event::*;
@@ -26,9 +27,13 @@ impl GameServer {
     }
 
     pub async fn process(&mut self) -> io::Result<()> {
+        self.read_buf.reserve(128);
+        println!("Capacity: {}", self.read_buf.capacity());
         let (_size, addr) = self.socket.recv_from(&mut self.read_buf).await?;
+        println!("VEctor passed...");
         let event = GameEvent::decode(&mut self.read_buf)?;
         self.read_buf.clear();
+        println!("Decoded one...");
         // TODO: check if we should do this in a separate thread, as well as the update itself
         let update = self.process_event(event, addr);
         self.process_update(update).await?;
