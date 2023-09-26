@@ -1,0 +1,24 @@
+syntax = "proto3";
+package input_messages;
+
+message PlayerJoined {
+  string id = 1;  
+  string username = 2;
+}
+
+message PlayerLeft {
+  string id = 1;
+}
+
+message Move {
+  int32 distance_x = 1;
+  int32 distance_y = 2; 
+}
+
+message GameEvent {
+  oneof event {
+    PlayerJoined joined = 1;
+    Move move = 2;
+    PlayerLeft left = 3;
+  }
+}

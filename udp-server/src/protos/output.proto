@@ -1,0 +1,25 @@
+syntax = "proto3";
+package output_messages;
+
+message AddedPlayer {
+  string id = 1;
+  string username = 2;
+}
+
+message RemovedPlayer {
+  string id = 1;
+}
+
+message ChangedPlayerPosition {
+  int32 x = 1;
+  int32 y = 2;
+  int32 z = 3;
+}
+
+message UpdateGameEvent {
+  oneof updateEvent {
+    AddedPlayer addedPlayer = 1;
+    RemovedPlayer removedPlayer = 2;
+    ChangedPlayerPosition changedPlayerPosition = 3;
+  }
+}
