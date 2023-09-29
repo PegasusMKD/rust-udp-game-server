@@ -6,7 +6,7 @@ use tokio::net::UdpSocket;
 
 use crate::{game_info::*, input_messages};
 
-use bytes::{BytesMut, BufMut, Buf};
+use bytes::BytesMut;
 
 use crate::input_messages::game_event::*;
 use crate::input_messages::*;
@@ -40,6 +40,7 @@ impl GameServer {
         let (_size, addr) = result.unwrap();
         let clean_buf: Vec<u8> = buf.into_iter().filter(|b| *b != 0x0).collect();
         let event = GameEvent::decode(&mut clean_buf.as_slice())?;
+        
         // TODO: check if we should do this in a separate thread, as well as the update itself
         let update = self.process_event(event, addr);
         self.process_update(update).await?;
