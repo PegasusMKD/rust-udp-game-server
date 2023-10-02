@@ -2,6 +2,8 @@ use std::net::SocketAddr;
 
 use crate::networking::*;
 
+use crate::geometry::*;
+
 #[derive(Clone)]
 pub struct Player {
     pub id: String,
@@ -19,16 +21,9 @@ impl Player {
             username,
             server_info: PlayerServerInfo { addr },
             health: 100,
-            position: Position { x: 0, y: 0, z: 0 }
+            position: Position { x: 0.0, y: 0.0, z: 0.0 }
         }
     }
-}
-
-#[derive(Clone)]
-pub struct Position {
-    pub x: i32,
-    pub y: i32,
-    pub z: i32
 }
 
 pub struct GameState {

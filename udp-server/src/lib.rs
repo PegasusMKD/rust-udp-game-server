@@ -10,3 +10,7 @@ pub mod networking;
 pub mod game_server;
 pub mod game_info;
 pub mod entities;
+pub mod bullet;
+pub mod geometry;
+pub mod message_queue;
+pub mod inbound_server;

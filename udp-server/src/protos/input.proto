@@ -11,8 +11,8 @@ message PlayerLeft {
 }
 
 message Move {
-  int32 distance_x = 1;
-  int32 distance_y = 2; 
+  double distance_x = 1;
+  double distance_y = 2; 
 }
 
 message GameEvent {

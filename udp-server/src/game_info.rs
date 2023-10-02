@@ -1,13 +1,19 @@
 use std::net::SocketAddr;
 
+use crate::bullet::BasicBullet;
 use crate::entities::*;
+use crate::geometry::*;
 use crate::input_messages::*;
 use crate::output_messages;
+
+use crate::bullet::{Bullet, TickUpdate};
+
 
 use output_messages::update_game_event::UpdateEvent;
 
 pub struct GameInfo {
     players: Vec<Player>,
+    bullets: Vec<Bullet>,
     state: GameState
 }
 
@@ -57,12 +63,24 @@ impl GameInfo {
         None
     }
 
+    pub fn shoot_bullet(&mut self, position: Position, direction: Direction) -> Option<UpdateEvent> {
+        self.bullets.push(Bullet::Basic { bullet: BasicBullet::new(position, direction) });
+        None // TODO: Add event which creates the bullet
+    }
+
+    pub fn game_tick(&mut self, delta: u128) -> Option<UpdateEvent> {
+        for bullet in self.bullets.iter_mut() {
+            bullet.update_position(delta);
+        }
+        None // TODO: Add event which updates bullet position
+    }
+
 }
 
 impl Default for GameInfo {
     
     fn default() -> Self {
-        GameInfo { players: Vec::new(), state: GameState {  } }
+        GameInfo { players: Vec::new(), bullets: Vec::new(), state: GameState {  } }
     }
 
 }
