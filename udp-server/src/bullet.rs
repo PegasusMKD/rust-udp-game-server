@@ -1,21 +1,29 @@
-use crate::geometry::*;
+use crate::{geometry::*, output_messages};
+use crate::input_messages::Direction;
 
 pub struct BulletInfo {
-    position: Position,
+    pub id: uuid::Uuid,
+    pub position: Position,
     velocity: Velocity,
 }
 
 impl BulletInfo {
     
-    pub fn update_position_in(&mut self, delta: u128) {
+    pub fn update_position_in(&mut self, delta: u128) -> output_messages::UpdateBulletPosition {
         self.position.x += (delta as f64 / 1000.0) * self.velocity.velocity_x;
         self.position.y += (delta as f64 / 1000.0) * self.velocity.velocity_y;
-        self.position.z += (delta as f64 / 1000.0) * self.velocity.velocity_z;     
+        self.position.z += (delta as f64 / 1000.0) * self.velocity.velocity_z;
+        output_messages::UpdateBulletPosition { 
+            id: self.id.to_string(),
+            x: self.position.x,
+            y: self.position.y,
+            z: self.position.z
+        }
     }
 }
 
 pub struct BasicBullet {
-    bullet_info: BulletInfo,
+    pub bullet_info: BulletInfo,
     speed: f64,
     damage: i16
 }
@@ -23,9 +31,9 @@ pub struct BasicBullet {
 impl BasicBullet {
     pub fn new(position: Position, direction: Direction) -> Self {
         let default_speed = 2.0;
-
+        
         Self {
-            bullet_info: BulletInfo { position, velocity: Velocity::new(direction, default_speed) },
+            bullet_info: BulletInfo { id: uuid::Uuid::new_v4(), position, velocity: Velocity::new(direction, default_speed) },
             speed: default_speed,
             damage: 20
         }
@@ -39,15 +47,27 @@ pub enum Bullet {
 
 
 pub trait TickUpdate {
-    fn update_position(&mut self, delta: u128);
+    fn update_position(&mut self, delta: u128) -> output_messages::UpdateBulletPosition;
 }
 
 impl TickUpdate for Bullet {
     
-    fn update_position(&mut self, delta: u128) {
+    fn update_position(&mut self, delta: u128) -> output_messages::UpdateBulletPosition {
         match self {
             Self::Basic { bullet } => bullet.bullet_info.update_position_in(delta) 
         }
     }
 
+}
+
+impl output_messages::CreateBullet {
+    
+    pub fn new(bullet_info: &BulletInfo) -> Self {
+        Self {
+            id: bullet_info.id.to_string(),
+            x: bullet_info.position.x,
+            y: bullet_info.position.y,
+            z: bullet_info.position.z
+        }
+    }
 }

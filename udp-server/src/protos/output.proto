@@ -16,10 +16,30 @@ message ChangedPlayerPosition {
   double z = 3;
 }
 
+message CreateBullet {
+  string id = 1;
+  double x = 2;
+  double y = 3;
+  double z = 4;
+}
+
+message UpdateBulletPosition {
+  string id = 1;
+  double x = 2;
+  double y = 3;
+  double z = 4;
+}
+
+message UpdateAllBullets {
+  repeated UpdateBulletPosition updateBulletPosition = 1;
+}
+
 message UpdateGameEvent {
   oneof updateEvent {
     AddedPlayer addedPlayer = 1;
     RemovedPlayer removedPlayer = 2;
     ChangedPlayerPosition changedPlayerPosition = 3;
+    CreateBullet createBullet = 4;
+    UpdateAllBullets updateAllBullets = 5;
   }
 }

@@ -14,3 +14,4 @@ pub mod bullet;
 pub mod geometry;
 pub mod message_queue;
 pub mod inbound_server;
+pub mod utility;

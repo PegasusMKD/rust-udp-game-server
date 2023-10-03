@@ -10,6 +10,7 @@ prost = "0.12.1"
 prost-types = "0.12.1"
 bytes = "1"
 chrono = "0.4.31"
+rand = "0.8.5"
 
 [dependencies.tokio]
 version = "1.32.0"

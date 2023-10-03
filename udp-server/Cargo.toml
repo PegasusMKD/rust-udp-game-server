@@ -19,6 +19,10 @@ features = [
   "full"
 ]
 
+[dependencies.uuid]
+version = "1.4.1"
+features = ["v4", "fast-rng", "macro-diagnostics"]
+
 [build-dependencies]
 prost-build = "0.12.1"
 

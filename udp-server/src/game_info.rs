@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use crate::bullet::BasicBullet;
 use crate::entities::*;
-use crate::geometry::*;
+use crate::input_messages;
 use crate::input_messages::*;
 use crate::output_messages;
 
@@ -63,16 +63,45 @@ impl GameInfo {
         None
     }
 
-    pub fn shoot_bullet(&mut self, position: Position, direction: Direction) -> Option<UpdateEvent> {
-        self.bullets.push(Bullet::Basic { bullet: BasicBullet::new(position, direction) });
-        None // TODO: Add event which creates the bullet
+    fn find_player_by_address(&self, addr: SocketAddr) -> Option<&Player> {
+        let player_exists = self.players.iter().position(|player| player.server_info.addr == addr);
+        if let Some(pos) = player_exists {
+            let player = self.players.get(pos).unwrap();
+            return Some(player);
+        }
+
+        None
+ 
+    }
+
+    pub fn shoot_bullet(&mut self, payload: input_messages::Shoot, addr: SocketAddr) -> Option<UpdateEvent> { 
+        let player = self.find_player_by_address(addr);
+        if player.is_none() {
+            return None;
+        }
+        
+        let position = player.unwrap().position.clone();
+        let basic_bullet = BasicBullet::new(position, payload.direction.unwrap());
+        let response = Some(UpdateEvent::CreateBullet(output_messages::CreateBullet::new(&basic_bullet.bullet_info)));
+        self.bullets.push(Bullet::Basic { bullet: basic_bullet });
+        response
     }
 
     pub fn game_tick(&mut self, delta: u128) -> Option<UpdateEvent> {
+        let mut bullet_changes: Vec<output_messages::UpdateBulletPosition> = Vec::new();
         for bullet in self.bullets.iter_mut() {
-            bullet.update_position(delta);
+            bullet_changes.push(bullet.update_position(delta));
         }
-        None // TODO: Add event which updates bullet position
+
+        if !bullet_changes.is_empty() {
+            println!("Bullet data: {:?}\n", bullet_changes);
+        }
+        
+        Some(UpdateEvent::UpdateAllBullets(
+            output_messages::UpdateAllBullets {
+                update_bullet_position: bullet_changes 
+            }
+        ))
     }
 
 }

@@ -11,6 +11,7 @@ use prost::Message;
 use crate::message_queue::*;
 use crate::input_messages::*;
 
+const BYTE_MAGIC_NUMBER: u8 = 0x2;
 
 pub struct InboundServer {
     pub socket: Arc<Mutex<UdpSocket>>, // Shared
@@ -33,7 +34,7 @@ impl InboundServer {
     }
 
     pub async fn wait_incoming_messages(&mut self) -> io::Result<()> {
-        let mut buf = Vec::from([0x0; 128]);
+        let mut buf = Vec::from([BYTE_MAGIC_NUMBER; 128]);
         let result = self.socket.lock().await.try_recv_from(&mut buf);
         
         match result {
@@ -42,11 +43,9 @@ impl InboundServer {
         }
 
         let (_size, addr) = result.unwrap();
-        let clean_buf: Vec<u8> = buf.into_iter().filter(|b| *b != 0x0).collect();
+        let clean_buf: Vec<u8> = buf.into_iter().filter(|b| *b != BYTE_MAGIC_NUMBER).collect();
         let event = GameEvent::decode(&mut clean_buf.as_slice())?;
         
-        println!("Received event: {:?}", event);
-
         let last_order = self.peek_latest_order().await;
         self.message_queue.lock().await.insert(QueuedMessage { data: event.clone(), addr, order: last_order + 1 });
         Ok(())

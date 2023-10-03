@@ -3,8 +3,9 @@ use std::net::SocketAddr;
 use std::io;
 
 use crate::inbound_server::InboundServer;
+use crate::utility;
 
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 use prost::Message;
 use tokio::net::UdpSocket;
@@ -59,24 +60,21 @@ impl GameServer {
     pub async fn tick_process(&mut self) -> io::Result<()> {
         println!("Started ticks...");
         let mut interval = tokio::time::interval(Duration::from_millis(16));
-        let mut last_loop = Self::current_time();
+        let mut last_loop = utility::current_time();
         loop {
             interval.tick().await;
 
-            let start = Self::current_time();
+            let start = utility::current_time();
             let delta = start - last_loop;
 
-            self.process_all_events(); 
+            let _ = self.process_all_events().await; 
             
             self.game.game_tick(delta);
-       
+               
             last_loop = start;
         }
     }
     
-    fn current_time() -> u128 {
-       SystemTime::now().duration_since(UNIX_EPOCH).expect("Couldn't get current time since unix epoch.").as_micros() 
-    }
 
     async fn process_all_events(&mut self) -> io::Result<()> {
         let mut queue = self.flush_queue().await;
@@ -96,7 +94,8 @@ impl GameServer {
         match ev {
             Event::Joined(payload) => self.game.add_player(payload, addr),
             Event::Move(payload) => self.game.move_player(payload, addr),
-            Event::Left(payload) => self.game.remove_player(payload, addr)
+            Event::Left(payload) => self.game.remove_player(payload, addr),
+            Event::Shoot(payload) => self.game.shoot_bullet(payload, addr)
         }
     }
 

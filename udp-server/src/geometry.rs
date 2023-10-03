@@ -1,3 +1,5 @@
+use crate::input_messages::Direction;
+
 #[derive(Clone)]
 pub struct Position {
     pub x: f64,
@@ -10,13 +12,6 @@ pub struct Velocity {
     pub velocity_y: f64,
     pub velocity_z: f64
 }
-
-pub struct Direction {
-    direction_x: f64,
-    direction_y: f64,
-    direction_z: f64
-}
-
 
 impl Velocity {
     pub fn new(direction: Direction, speed: f64) -> Self {

@@ -1,9 +1,11 @@
 use std::io::{self, Write};
 
+use rand::Rng;
+
 use prost::Message;
 use tokio::{net::UdpSocket, time::Instant};
 
-use udp_client::input_messages;
+use udp_client::input_messages::{self, Direction};
 use input_messages::game_event::Event;
 
 struct GameClient {
@@ -53,7 +55,7 @@ impl GameClient {
 
     pub async fn join_lobby(&mut self) -> io::Result<()> {
         println!("Enter anything to join the lobby");
-        let mut input = String::new();
+        let input = String::new();
         // io::stdin().read_line(&mut input).expect("Lobby failed");
         let payload = input_messages::PlayerJoined { id: self.id.clone(), username: self.username.clone() }; 
         let body = input_messages::GameEvent { event: Some(Event::Joined(payload)) };
@@ -74,6 +76,7 @@ impl GameClient {
         let mut last_sec = 0;
         let mut second_messages = 0;
         let mut send_messages = true;
+        let mut created_shot = false;
         loop {
             let elapsed = start.elapsed();
             if last_sec != elapsed.as_secs() {
@@ -82,16 +85,25 @@ impl GameClient {
             }
 
             if send_messages {
-                self.send_movement().await?;
+                let number = {
+                    let mut rng = rand::thread_rng();
+                    rng.gen_range(0..101)
+                };
+
+                if number < 80 {
+                    self.send_movement().await?;
+                } else {
+                    if created_shot {
+                        continue;
+                    }
+                    created_shot = true;
+                    self.send_shoot().await?;
+                }
                 sent_messages += 1;
                 batch_messages += 1;
                 second_messages += 1;
             }
             
-            if second_messages > self.rate_limit { 
-                send_messages = false;
-            }
-
             last_sec = elapsed.as_secs();
 
             if elapsed.as_secs() > 0 && elapsed.as_secs() % 6 != 0 {
@@ -112,8 +124,18 @@ impl GameClient {
         
     }
 
+    async fn send_shoot(&mut self) -> io::Result<()> {
+        let payload = input_messages::Shoot { direction: Some(Direction { direction_x: 3.0, direction_y: 3.0, direction_z: 1.0 }) };
+        let body = input_messages::GameEvent { event: Some(Event::Shoot(payload)) };
+        self.write_buf.reserve(body.encoded_len());
+        let _ = body.encode(&mut self.write_buf);
+        self.socket.send(&self.write_buf).await?;
+        self.write_buf.clear();
+        Ok(())
+    }
+
     async fn send_movement(&mut self) -> io::Result<()> {
-        let payload = input_messages::Move { distance_x: 10, distance_y: 10 };
+        let payload = input_messages::Move { distance_x: 2.0, distance_y: 6.123456789 };
         let body = input_messages::GameEvent { event: Some(Event::Move(payload)) };
         self.write_buf.reserve(body.encoded_len());
         let _ = body.encode(&mut self.write_buf);
